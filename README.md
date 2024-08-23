@@ -3,6 +3,10 @@
 This toolbox can be used to juggle 4chan and reddit data. It was developed to run frequency analysis of markers indication situational definition on 4chan and Reddit. 
 However, it should be flexible enough to be used to run any kind of frequency analysis on 4chan and Reddit archive data.
 
+## Kown Issues
+
+- Data import using packaged toolbox (from releases) doesn't work on windows! Please consider using 'The Python Way' or Linux OS for this.
+
 ## Usage
 
 To use one of the following instructions:
@@ -38,8 +42,7 @@ toolbox.exe help
 
 ```bash
 python -m venv venv
-source venv/bin/activate
-python -m pip install --upgrade pip
+source venv/bin/activate  # on windows: venv\Scripts\activate.bat
 pip install -r requirements.txt
 ```
 3. Verify that everything is set up properly. This includes at least having a look at `config/default.json` and `config/markers.ods`

@@ -152,7 +152,7 @@ class Processor:
         if self.mode.startswith("q_"):
             """hagen-et-al datasets can be imported as csv - they ain't that big"""
             chunk = []
-            with gzip.open(self.input_file, 'rt') as f:
+            with gzip.open(self.input_file, 'rt', encoding='utf-8') as f:
                 reader = csv.reader(f, delimiter=',', quotechar="\"")
                 for row in reader:
                     if row[0] == "thread_id" or row[2] == "subreddit":
@@ -163,7 +163,7 @@ class Processor:
 
         if self.mode == "reddit_submissions" or self.mode == "reddit_comments" or self.mode == "4chan":
             with multiprocessing.Pool(self.num_workers) as pool:
-                with gzip.open(self.input_file, 'rt') as f:
+                with gzip.open(self.input_file, 'rt', encoding='utf-8') as f:
                     for chunk in self.read_in_chunks(f):
                         pool.apply_async(
                             self.process_and_save,
@@ -192,7 +192,7 @@ class Processor:
         if self.mode == "4chan_thumbs":
             with multiprocessing.Pool(self.num_workers) as pool:
                 threads = []
-                with tarfile.open(self.input_file, 'r:gz') as tar:
+                with tarfile.open(self.input_file, 'r:gz', encoding='utf-8') as tar:
                     for chunk in self.read_in_chunks(tar):
                         pool.apply_async(
                              self.process_and_save,
@@ -353,7 +353,7 @@ class Processor:
             elif self.mode == "4chan_thumbs":
                 # we need following columns:
                 # platform_uid, board_uid, group1, group2, filename, size, data
-                with tarfile.open(self.input_file, 'r:gz') as tar:
+                with tarfile.open(self.input_file, 'r:gz', encoding='utf-8') as tar:
                     try:
                         platform = self.get_meta_id("platforms", self.mode.rstrip("_thumbs"), sql_write_queue_priority)
                         board = self.get_meta_id("boards", "/" + str.split(os.path.basename(self.input_file), "_")[0] + "/", sql_write_queue_priority)
