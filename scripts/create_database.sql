@@ -47,10 +47,10 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 
 -- Add index for platform
-CREATE INDEX idx_posts_platform ON posts(platform_uid);
+CREATE INDEX IF NOT EXISTS idx_posts_platform ON posts(platform_uid);
 
 -- Add index for board
-CREATE INDEX idx_posts_board ON posts(board_uid);
+CREATE INDEX IF NOT EXISTS idx_posts_board ON posts(board_uid);
 
 -- FTS index to speed up full text search
 CREATE VIRTUAL TABLE IF NOT EXISTS fts_idx USING fts5(subject, body, extras, content='posts', content_rowid='uid');
