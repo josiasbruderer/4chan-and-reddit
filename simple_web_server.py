@@ -10,7 +10,7 @@ def run(web_root='.', port=8080):
             super().__init__(*args, directory=web_root, **kwargs)
 
     with socketserver.TCPServer(("", port), SimpleHTTPRequestHandler) as httpd:
-        print(f'Serving webserver at: http://localhost:{httpd.server_address[1]}')
+        print(f'Serving at: http://localhost:{httpd.server_address[1]}')
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

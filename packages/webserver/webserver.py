@@ -8,16 +8,19 @@ def run(web_root='.', port=8080):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=web_root, **kwargs)
 
-    class StoppableHTTPServer(http.server.HTTPServer):
-        def run(self):
-            try:
-                self.serve_forever()
-            except KeyboardInterrupt:
-                pass
-            finally:
-                # Clean-up server (close socket, etc.)
-                self.server_close()
+    with socketserver.TCPServer(("", port), SimpleHTTPRequestHandler) as httpd:
+        print(f'Serving at: http://localhost:{httpd.server_address[1]}')
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            httpd.server_close()
 
+
+def start(web_root='.', web_port=8080):
+    if not os.path.exists(web_root):
+        os.makedirs(web_root, exist_ok=True)
     if os.path.exists(os.path.join(web_root, 'index.html')):
         os.remove(os.path.join(web_root, 'index.html'))
     with open(os.path.join(web_root, 'index.html'), 'w', encoding="utf-8") as f:
@@ -26,12 +29,8 @@ def run(web_root='.', port=8080):
             f.write(f'<li><a target="_blank" href="{d}/">{d}</a></li>')
         f.write('</ul></center></body></html>')
 
-    with socketserver.TCPServer(("", port), SimpleHTTPRequestHandler) as httpd:
-        print("Serving at port", port)
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            # Clean-up server (close socket, etc.)
-            httpd.server_close()
+    print(f'Starting web server for directory: {web_root}')
+    try:
+        run(web_root=web_root, port=web_port)
+    except Exception as e:
+        run(web_root=web_root, port=0)
