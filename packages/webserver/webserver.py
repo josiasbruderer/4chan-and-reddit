@@ -20,7 +20,7 @@ def run(web_root='.', port=8080):
 
     if os.path.exists(os.path.join(web_root, 'index.html')):
         os.remove(os.path.join(web_root, 'index.html'))
-    with open(os.path.join(web_root, 'index.html'), 'w') as f:
+    with open(os.path.join(web_root, 'index.html'), 'w', encoding="utf-8") as f:
         f.write('<html><body><center><h1>Results Overview</h1><p>Please select a result:</p><ul style="list-style-type: none;padding: 0;margin: 0;">')
         for d in sorted(next(os.walk(web_root))[1]):
             f.write(f'<li><a target="_blank" href="{d}/">{d}</a></li>')

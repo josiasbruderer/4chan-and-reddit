@@ -61,12 +61,12 @@ def start(config, ACTION):
             sample_dump = [s[0] for s in sample_dump[1]]
             sample_size[platform] = len(sample_dump)
             if not config.get('analysis', 'dryrun'):
-                with open(sample_path[platform], 'w') as file:
+                with open(sample_path[platform], 'w', encoding="utf-8") as file:
                     json.dump(sample_dump, file)
                 sample_dump2 = qm.query_sample(conn, "dump_sample2", sample_name=sample[platform])
-                with open(sample_path[platform + "_full"] + ".json", 'w') as file:
+                with open(sample_path[platform + "_full"] + ".json", 'w', encoding="utf-8") as file:
                     json.dump(sample_dump2, file)
-                with open(sample_path[platform + "_full"] + ".csv", 'w', newline='') as csvfile:
+                with open(sample_path[platform + "_full"] + ".csv", 'w', encoding="utf-8", newline='') as csvfile:
                     writer = csv.writer(csvfile)
                     writer.writerow(sample_dump2[0])
                     for row in sample_dump2[1]:
@@ -81,7 +81,7 @@ def start(config, ACTION):
             'distribution_per_date': qm.query_sample(conn, "meta_posts_per_day", sample_name=[sample['4chan'], sample['reddit']])
         }
         if not config.get('analysis', 'dryrun'):
-            with open(result_meta_json, 'w') as file:
+            with open(result_meta_json, 'w', encoding="utf-8") as file:
                 json.dump(meta_data, file)
 
         # run all queries
@@ -188,7 +188,7 @@ def start(config, ACTION):
                     keeper['match_ratio']['sample'].append(-1)
                     keeper['digg']['sample'].append([])
                 if not config.get('analysis', 'dryrun'):
-                    with open(os.path.join(result_diggdeep_dir, row["index"] + ".json"), 'w') as file:
+                    with open(os.path.join(result_diggdeep_dir, row["index"] + ".json"), 'w', encoding="utf-8") as file:
                         json.dump(list(set(digg_data)), file)
             except Exception as e:
                 log.warning("something failed... we will skip this and continue with next one. error was: " + str(e))
