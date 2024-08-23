@@ -9,7 +9,7 @@ from packages import importer
 from packages import analyser
 from packages import webserver
 
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 ROOT_DIR = PACKAGE_DIR = os.path.dirname(os.path.realpath(__file__))
 if getattr(sys, 'frozen', False):
     ROOT_DIR = os.path.dirname(os.path.realpath(sys.executable))  # when run packaged we want path of executable instead of temporary directory
@@ -19,7 +19,12 @@ CONFIG_DIR = os.path.join(ROOT_DIR, 'config')
 LOGS_DIR = os.path.join(ROOT_DIR, 'logs')
 SCRIPTS_DIR = os.path.join(ROOT_DIR, 'scripts')
 LOG_FILE = os.path.join(LOGS_DIR, f'{datetime.datetime.now().strftime("%Y-%m-%d")}.log')
-CONFIG_FILE = os.path.join(CONFIG_DIR, f'{sys.argv[2] if len(sys.argv) > 2 else 'default'}.json')
+CONFIG_FILE = os.path.join(CONFIG_DIR, 'default.json')
+if len(sys.argv) > 2:
+    if os.path.exists(sys.argv[2]):
+        CONFIG_FILE = os.path.abspath(sys.argv[2])
+    else:
+        print(f'Config file {sys.argv[2]} does not exist! Falling back to default: {CONFIG_FILE}')
 ACTION = sys.argv[1] if len(sys.argv) > 1 else None
 
 if getattr(sys, 'frozen', False):

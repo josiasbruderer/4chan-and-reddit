@@ -10,6 +10,9 @@ def setup_database(db_name, init_script, drop_all_data=False):
         time.sleep(3)
         os.remove(db_name)
 
+    if not os.path.exists(os.path.dirname(db_name)):
+        os.makedirs(os.path.dirname(db_name), exist_ok=True)
+
     conn = sqlite3.connect(db_name, check_same_thread=False)
     cur = conn.cursor()
 
