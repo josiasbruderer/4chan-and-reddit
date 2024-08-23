@@ -34,8 +34,14 @@ def start(config, ACTION):
         '4chan': 0,
         'reddit': 0
     }
-    shutil.copyfile(config.get("analysis", "html_template"), os.path.join(results_dir, 'index.html'))
-    shutil.copyfile(config.get("analysis", "favicon"), os.path.join(results_dir, 'favicon.ico'))
+    try:
+        shutil.copyfile(config.get("analysis", "html_template"), os.path.join(results_dir, 'index.html'))
+    except Exception as e:
+        log.warning('index.html was not copied')
+    try:
+        shutil.copyfile(config.get("analysis", "favicon"), os.path.join(results_dir, 'favicon.ico'))
+    except Exception as e:
+        log.warning('favicon.ico was not copied')
 
     qm = querymanager()
 

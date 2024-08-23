@@ -9,7 +9,7 @@ from packages import importer
 from packages import analyser
 from packages import webserver
 
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 ROOT_DIR = PACKAGE_DIR = os.path.dirname(os.path.realpath(__file__))
 if getattr(sys, 'frozen', False):
     ROOT_DIR = os.path.dirname(os.path.realpath(sys.executable))  # when run packaged we want path of executable instead of temporary directory
@@ -26,9 +26,15 @@ if getattr(sys, 'frozen', False):
     '''Do some file copying when run as package'''
     os.makedirs(LOGS_DIR, exist_ok=True)
     if not os.path.exists(CONFIG_FILE):
-        shutil.copytree(PACKAGE_DIR + '/config', CONFIG_DIR)
+        try:
+            shutil.copytree(PACKAGE_DIR + '/config', CONFIG_DIR)
+        except Exception as e:
+            '''do nothing'''
     if not os.path.exists(SCRIPTS_DIR):
-        shutil.copytree(PACKAGE_DIR + '/scripts', SCRIPTS_DIR)
+        try:
+            shutil.copytree(PACKAGE_DIR + '/scripts', SCRIPTS_DIR)
+        except Exception as e:
+            '''do nothing'''
 
 log = logger.setup(__name__, LOG_FILE, logger.DEBUG)
 config = configer.setup(CONFIG_FILE)
@@ -68,7 +74,7 @@ def main():
 
     if ACTION == "webserver":
         log.info(f'Starting web server from {config.as_path(config.get('analysis', 'results_dir'))}')
-        webserver.run(config.as_path(config.get('analysis', 'results_dir')))
+        webserver.start(config.as_path(config.get('analysis', 'results_dir')))
 
 
 if __name__ == '__main__':
