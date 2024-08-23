@@ -9,7 +9,7 @@ from packages import importer
 from packages import analyser
 from packages import webserver
 
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 ROOT_DIR = PACKAGE_DIR = os.path.dirname(os.path.realpath(__file__))
 if getattr(sys, 'frozen', False):
     ROOT_DIR = os.path.dirname(os.path.realpath(sys.executable))  # when run packaged we want path of executable instead of temporary directory
