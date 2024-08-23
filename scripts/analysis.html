@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<head>
+    <title>Analysis</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+
+    <!-- jQuery from CDN -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- DataTables from CDN -->
+    <link href="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.4/b-3.1.1/b-colvis-3.1.1/datatables.min.css" rel="stylesheet">
+    <script src="https://cdn.datatables.net/v/dt/jq-3.7.0/dt-2.1.4/b-3.1.1/b-colvis-3.1.1/datatables.min.js"></script>
+
+    <!-- Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #232323;
+                color: #ccc;
+            }
+        }
+
+        .table-container, .table-container-half {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid darkgray;
+            overflow-x: auto;
+        }
+
+        .table-container-half {
+            float: left;
+            width: calc(50% - 50px);
+        }
+
+        table.dataTable {
+            width: 100%; /* Ensure table uses full width of its container */
+        }
+
+        div.newline {
+            clear: both;
+        }
+
+        span.functional {
+            text-decoration: underline;
+        }
+
+        span.fts_match {
+            font-weight: bold;
+        }
+
+        table.dataTable tbody tr:nth-child(even) {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+         .loader {
+              border: 3px solid #f3f3f3; /* Light grey */
+              border-top: 3px solid #3498db; /* Blue */
+              border-radius: 50%;
+              width: 1em;
+              height: 1em;
+              animation: spin 2s linear infinite;
+             float: left;
+            }
+
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+
+            #loading-progress .pending .loader{
+                display: inline-block;
+            }
+            #loading-progress .loader, #loading-progress .pending input{
+                display: none;
+            }
+    </style>
+
+</head>
+<body>
+<h1>Analysis</h1>
+<h2>Loading progress</h2>
+<p>You should wait until every checkbox is activated...</p>
+<div id="loading-progress">
+    <ul>
+        <li class="meta-dl pending"><div class="loader"></div><input type="checkbox" checked="1" readonly="1"> Metadata download (~20KB)</li>
+        <li class="meta-vis pending"><div class="loader"></div><input type="checkbox" checked="1" readonly="1"> Metadata visualization</li>
+        <li class="analysis-dl pending"><div class="loader"></div><input type="checkbox" checked="1" readonly="1"> Analysis download (~40MB)</li>
+        <li class="analysis-vis pending"><div class="loader"></div><input type="checkbox" checked="1" readonly="1"> Analysis visualization</li>
+    </ul>
+</div>
+
+<h2>Data Description</h2>
+
+<div id="meta-distribution-per-date" class='' style="width: calc(100% - 20px); height: 400px; max-height: 400px;"></div>
+<div id="meta-distribution-per-date-log" class='' style="width: calc(100% - 20px); height: 400px; max-height: 400px;"></div>
+<div id="meta-board-counts" class='table-container-half'></div>
+<div id="meta-platform-counts" class='table-container-half'></div>
+
+<div class="newline"></div>
+
+
+<h2>Frequencies</h2>
+
+<h3>All</h3>
+<div id="frequencies-all" class='table-container'></div>
+
+<h3>By Marker Group (different markers in one comment counts multiple times)</h3>
+<div id="frequencies-by-group" class='table-container'></div>
+
+<h3>By category (different markers in one comment counts multiple times)</h3>
+<div id="frequencies-by-cateogry" class='table-container'></div>
+
+<h3>By Marker Group (different markers in one comment counts only once) [NOT IMPLEMENTED YET!]</h3>
+<div id="frequencies-by-group-once" class='table-container'></div>
+
+<h3>By category (different markers in one comment counts only once) [NOT IMPLEMENTED YET!]</h3>
+<div id="frequencies-by-cateogry-once" class='table-container'></div>
+
+<h2>Deep Digging (<span id='digger-config'>nothing selected</span>)</h2>
+
+<div id="deep-digging" class='table-container'>
+    <p>Click an index, count or match value above to load data...</p>
+</div>
+
+<br><br><br>
+
+<script>
+
+    meta_data = []
+    freq_data = []
+    freq_meta = {}
+    digg_data = {}
+
+    function initialize_table(target, data, fields = false) {
+        if (fields) {
+            filter = getMatchingIndexes(data[0], fields)
+            data[0] = fields
+            data[1] = selectKeys_arr(data[1], filter)
+        }
+        var headers = data[0];
+        var rows = data[1];
+
+        var table = $('<table></table>');
+        target.html(table);
+
+        // Initialize DataTable with dynamic data
+        target.find('table').DataTable({
+            data: rows, // Pass the data to DataTables
+            columns: headers.map(function (header) {
+                return {title: header}; // Map headers to columns
+            }),
+            paging: true, // Enable pagination (default)
+            pageLength: 100, // Number of rows per page
+            lengthMenu: [10, 25, 100, 1000], // Options for rows per page
+            searching: true,
+            scrollY: '400px'
+        });
+    }
+
+    function getMatchingIndexes(arrayA, arrayB) {
+        let indexes = [];
+        arrayA.forEach((value, index) => {
+            if (arrayB.includes(value)) {
+                indexes.push(index);
+            }
+        });
+        return indexes;
+    }
+
+    function selectKeys(dataArray, keys) {
+        return dataArray.map(item => {
+            let result = {};
+            keys.forEach(key => {
+                if (key in item) {
+                    result[key] = item[key];
+                }
+            });
+            return result;
+        });
+    }
+
+    function selectKeys_arr(dataArray, keys) {
+        return dataArray.map(item => {
+            let result = [];
+            keys.forEach(key => {
+                if (key in item) {
+                    result.push(item[key]);
+                }
+            });
+            return result;
+        });
+    }
+
+    function initialize_table2(target, data, fields = false, drawCallback = false) {
+        if (fields) {
+            data = selectKeys(data, fields)
+        }
+        var headers = Object.keys(data[0]);
+        var rows = data.map(e => {
+            return Object.values(e)
+        });
+
+        var table = $('<table></table>');
+        target.html(table);
+
+        // Initialize DataTable with dynamic data
+        target.find('table').DataTable({
+            data: rows, // Pass the data to DataTables
+            columns: headers.map(function (header) {
+                return {title: header}; // Map headers to columns
+            }),
+            columnDefs: [
+                {
+                    targets: -1,
+                    className: 'last-column'
+                }
+            ],
+            paging: true, // Enable pagination (default)
+            pageLength: 100, // Number of rows per page
+            lengthMenu: [10, 25, 100, 1000], // Options for rows per page
+            searching: true,
+            scrollX: true,
+            scrollY: '600px',
+            createdRow: function (row, data, dataIndex) {
+                // Wrap each cell's content in a <span> with a class named after the column
+                $(row).find('td').each(function (index, cell) {
+                    const columnName = headers[index]; // Get the column name by index
+                    const content = $(cell).text(); // Get the cell content
+                    $(cell).html(`<span class="cell ${columnName}" data-key="${columnName}" data-value="${content}">${content}</span>`); // Wrap with span
+                });
+            },
+            fnDrawCallback: drawCallback,
+            layout: {
+                topStart: {
+                    buttons: ['colvis', 'pageLength']
+                }
+            },
+            initComplete: function () {
+                /*var table = this.api();
+
+                var footer = $('<tfoot><tr></tr></tfoot>');
+                $(this).find('thead th').each(function(index) {
+                    var title = $(this).text();
+                    $(footer).find('tr').append('<th><input type="text" class="table-filter" placeholder="Search ' + title + '" /></th>');
+                });
+                $(this).append(footer);
+                table.footer(footer)
+                console.log($(this))
+
+                table.columns().every(function() {
+                var column = this;
+                console.log(column.footer())
+                $(this).parent().parent().find('.table-filter').on('keyup', function() {
+                    if (column.search() !== this.value) {
+                        //column.search(this.value).draw();
+                        console.log("search")
+                    }
+                });
+            });*/
+            },
+            fixedHeader: {
+                footer: true
+            }
+
+        });
+    }
+
+    function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    function getColor(index) {
+        const colorPalette = [
+            '#FF6384', // Red
+            '#FF9F40', // Orange
+            '#FFCE56', // Yellow
+            '#36A2EB', // Blue
+            '#4BC0C0', // Teal
+            '#9966FF', // Purple
+            '#8D6E63', // Brown
+            '#4D5360'  // Dark Gray
+        ];
+        return colorPalette[index % colorPalette.length];
+    }
+
+    function initialize_chart(target, data, scale_type = 'linear') {
+        var headers = data[0];
+        headers = ['date', '4chan: All', '4chan: Hagen et al. (2020)', '4chan: Sample', 'Reddit: All', 'Reddit: Hagen et al. (2020)', 'Reddit: Sample'] // we overwrite labels anyway, lol
+        var rows = data[1];
+
+        // Prepare the data for Chart.js
+        var labels = rows.map(row => row[0]); // Assuming the first column is the date
+        var datasets = headers.slice(1).map((header, index) => {
+            return {
+                label: header,
+                data: rows.map(row => row[index + 1]), // Adjust index for each dataset
+                borderColor: getColor(index), // Random color for each line
+                backgroundColor: 'rgba(0, 0, 0, 0)', // Transparent background
+                fill: false
+            };
+        });
+        target.append($('<canvas></canvas>'))
+
+        // Create the chart
+        new Chart(target.find('canvas'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        type: scale_type,
+                        title: {
+                            display: true,
+                            text: 'Count'
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 0
+                    }
+                }
+
+            }
+        });
+    }
+
+    function click_handler(obj) {
+        var key = $(obj.currentTarget).data('key')
+        var value = $(obj.currentTarget).data('value')
+        var index = $(obj.currentTarget).parent().parent().find(".cell.index").data('value')
+        $('#deep-digging').html("loading...")
+        window.scrollTo(0, document.body.scrollHeight);
+        if (!(index in digg_data)) {
+            $.getJSON('comments/' + index + '.json', function (data) {
+                header = ['uid', 'post_id', 'timestamp', 'thread_id', 'thread_uid', 'parent_id', 'parent_uid', 'author', 'board', 'platform', 'post_type', 'rank', 'subject', 'extras', 'body']
+                digg_data[index] = [header, data]
+                return click_handler(obj)
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.error('Error loading JSON data:', textStatus, errorThrown);
+            });
+        } else {
+            tmp_data = JSON.parse(JSON.stringify(digg_data[index]))
+            if (key != "index") {
+                uids = []
+                if (key.indexOf("all") > 0) {
+                    uids = freq_data.filter(e => {
+                        return e.index == index
+                    })[0]["digg_all"]
+                } else if (key.indexOf("qanon") > 0) {
+                    uids = freq_data.filter(e => {
+                        return e.index == index
+                    })[0]["digg_qanon"]
+                } else if (key.indexOf("sample") > 0) {
+                    uids = freq_data.filter(e => {
+                        return e.index == index
+                    })[0]["digg_sample"]
+                }
+                tmp_data[1] = tmp_data[1].filter(e => {
+                    return uids.includes(e[0])
+                })
+            }
+            populate_deep_digg(tmp_data)
+            $('#digger-config').html(`index: ${index}; key: ${key}`)
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+    }
+
+    function populate_deep_digg(data) {
+        initialize_table($('#deep-digging'), data, ['post_id', 'timestamp', 'author', 'platform', 'board', 'rank', 'body'])
+    }
+
+    function group_array_by_platform_and_category(arr) {
+        var helper = {};
+        var result = arr.reduce(function (r, o) {
+            var key = o.platform + '-' + o.category;
+
+            if (!helper[key]) {
+                helper[key] = {
+                    'platform': o.platform,
+                    'category': o.category,
+                    'type': o.type,
+                    'count_all': o.count_all,
+                    'count_qanon': o.count_qanon,
+                    'count_sample': o.count_sample,
+                    'count_all_rel': parseFloat(o.count_all_rel).toFixed(10),
+                    'count_qanon_rel': parseFloat(o.count_qanon_rel).toFixed(10),
+                    'count_sample_rel': parseFloat(o.count_sample_rel).toFixed(10),
+                    'match_all': o.match_all,
+                    'match_qanon': o.match_qanon,
+                    'match_sample': o.match_sample,
+
+                }
+                r.push(helper[key]);
+            } else {
+                helper[key]['count_all'] += o.count_all;
+                helper[key]['count_qanon'] += o.count_qanon;
+                helper[key]['count_sample'] += o.count_sample;
+                helper[key]['count_all_rel'] = (parseFloat(helper[key]['count_all_rel']) + parseFloat(o.count_all_rel)).toFixed(10);
+                helper[key]['count_qanon_rel'] = (parseFloat(helper[key]['count_qanon_rel']) + parseFloat(o.count_qanon_rel)).toFixed(10);
+                helper[key]['count_sample_rel'] = (parseFloat(helper[key]['count_sample_rel']) + parseFloat(o.count_sample_rel)).toFixed(10);
+                helper[key]['match_all'] += o.match_all;
+                helper[key]['match_qanon'] += o.match_qanon;
+                helper[key]['match_sample'] += o.match_sample;
+            }
+
+            return r;
+        }, []);
+
+        return result;
+    }
+
+    function group_array_by_platform_and_category(arr) {
+        var helper = {};
+        var result = arr.reduce(function (r, o) {
+            var key = o.platform + '-' + o.category;
+
+            if (!helper[key]) {
+                helper[key] = {
+                    'platform': o.platform,
+                    'category': o.category,
+                    'type': o.type,
+                    'count_all': o.count_all,
+                    'count_qanon': o.count_qanon,
+                    'count_sample': o.count_sample,
+                    'count_all_rel': parseFloat(o.count_all_rel).toFixed(10),
+                    'count_qanon_rel': parseFloat(o.count_qanon_rel).toFixed(10),
+                    'count_sample_rel': parseFloat(o.count_sample_rel).toFixed(10),
+                    'match_all': o.match_all,
+                    'match_qanon': o.match_qanon,
+                    'match_sample': o.match_sample,
+
+                }
+                r.push(helper[key]);
+            } else {
+                helper[key]['count_all'] += o.count_all;
+                helper[key]['count_qanon'] += o.count_qanon;
+                helper[key]['count_sample'] += o.count_sample;
+                helper[key]['count_all_rel'] = (parseFloat(helper[key]['count_all_rel']) + parseFloat(o.count_all_rel)).toFixed(10);
+                helper[key]['count_qanon_rel'] = (parseFloat(helper[key]['count_qanon_rel']) + parseFloat(o.count_qanon_rel)).toFixed(10);
+                helper[key]['count_sample_rel'] = (parseFloat(helper[key]['count_sample_rel']) + parseFloat(o.count_sample_rel)).toFixed(10);
+                helper[key]['match_all'] += o.match_all;
+                helper[key]['match_qanon'] += o.match_qanon;
+                helper[key]['match_sample'] += o.match_sample;
+            }
+
+            return r;
+        }, []);
+
+        return result;
+    }
+
+    function group_array_by_platform_and_marker_group(arr) {
+        var helper = {};
+        var result = arr.reduce(function (r, o) {
+            var key = o.platform + '-' + o.marker_group;
+
+            if (!helper[key]) {
+                helper[key] = {
+                    'platform': o.platform,
+                    'category': o.category,
+                    'type': o.type,
+                    'marker_group': o.marker_group,
+                    'count_all': o.count_all,
+                    'count_qanon': o.count_qanon,
+                    'count_sample': o.count_sample,
+                    'count_all_rel': parseFloat(o.count_all_rel).toFixed(10),
+                    'count_qanon_rel': parseFloat(o.count_qanon_rel).toFixed(10),
+                    'count_sample_rel': parseFloat(o.count_sample_rel).toFixed(10),
+                    'match_all': o.match_all,
+                    'match_qanon': o.match_qanon,
+                    'match_sample': o.match_sample,
+
+                }
+                r.push(helper[key]);
+            } else {
+                helper[key]['count_all'] += o.count_all;
+                helper[key]['count_qanon'] += o.count_qanon;
+                helper[key]['count_sample'] += o.count_sample;
+                helper[key]['count_all_rel'] = (parseFloat(helper[key]['count_all_rel']) + parseFloat(o.count_all_rel)).toFixed(10);
+                helper[key]['count_qanon_rel'] = (parseFloat(helper[key]['count_qanon_rel']) + parseFloat(o.count_qanon_rel)).toFixed(10);
+                helper[key]['count_sample_rel'] = (parseFloat(helper[key]['count_sample_rel']) + parseFloat(o.count_sample_rel)).toFixed(10);
+                helper[key]['match_all'] += o.match_all;
+                helper[key]['match_qanon'] += o.match_qanon;
+                helper[key]['match_sample'] += o.match_sample;
+            }
+
+            return r;
+        }, []);
+
+        return result;
+    }
+
+    $(document).ready(function () {
+        $.getJSON('meta.json', function (data) {
+            $('#loading-progress .meta-dl').removeClass('pending');
+            meta_data = data
+            meta_data.counts_per_platform[1].push(["sample_4chan", meta_data.sample_size["4chan"]])
+            meta_data.counts_per_platform[1].push(["sample_reddit", meta_data.sample_size["reddit"]])
+            // Initialize Chart
+            initialize_chart($("#meta-distribution-per-date"), meta_data.distribution_per_date, 'linear')
+            initialize_chart($("#meta-distribution-per-date-log"), meta_data.distribution_per_date, 'logarithmic')
+
+            // Initialize DataTable
+            initialize_table($('#meta-platform-counts'), meta_data.counts_per_platform)
+            initialize_table($('#meta-board-counts'), meta_data.counts_per_board)
+
+            $('#loading-progress .meta-vis').removeClass('pending');
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+            console.error('Error loading JSON data:', textStatus, errorThrown);
+        });
+
+        $.getJSON('analysis.json', function (data) {
+            $('#loading-progress .analysis-dl').removeClass('pending');
+            freq_data = data
+
+            freq_meta['rel'] = freq_data.flatMap(obj => {
+                return Object.keys(obj)
+                    .filter(key => key.endsWith('_rel'))
+                    .map(key => parseFloat(obj[key]));
+            }).filter(e => {
+                return e != -1
+            });
+            freq_meta['ratio'] = freq_data.flatMap(obj => {
+                return Object.keys(obj)
+                    .filter(key => key.endsWith('_ratio'))
+                    .map(key => parseFloat(obj[key]));
+            }).filter(e => {
+                return e != -1
+            });
+            freq_meta['rel_min'] = Math.min(...freq_meta['rel']);
+            freq_meta['rel_max'] = Math.max(...freq_meta['rel']);
+            freq_meta['ratio_min'] = Math.min(...freq_meta['ratio']);
+            freq_meta['ratio_max'] = Math.max(...freq_meta['ratio']);
+
+
+            const freq_table_fn = (obj) => {
+
+                if(obj.attr('id') == 'frequencies-all') {
+                    obj.find('.cell.index, .cell[class*=count], .cell[class*=match]').addClass('functional')
+                    obj.find('.cell.index, .cell[class*=count], .cell[class*=match]').on('click', click_handler)
+                }
+
+                obj.find('.cell[class*=rel]').each((idx, cell) => {
+                    const value = parseFloat($(cell).data('value'));
+
+                    const minValue = freq_meta['rel_min']
+                    const maxValue = freq_meta['rel_max']
+                    const exponent = 0.5;
+
+                    const normalizedValue = (value - minValue) / (maxValue - minValue);
+                    const adjustedValue = Math.pow(normalizedValue, exponent);
+                    const colorIntensity = adjustedValue;
+                    const color = `rgba(255, 126, 0, ${colorIntensity})`;
+
+                    $(cell).parent().css('background-color', color);
+                });
+
+                obj.find('.cell[class*=ratio]').each((idx, cell) => {
+                    const value = parseFloat($(cell).data('value'));
+
+                    const minValue = freq_meta['ratio_min']
+                    const maxValue = freq_meta['ratio_max']
+                    const exponent = 0.5;
+
+                    const normalizedValue = (value - minValue) / (maxValue - minValue);
+                    const adjustedValue = Math.pow(normalizedValue, exponent);
+                    const colorIntensity = adjustedValue;
+                    const color = `rgba(0, 126, 126, ${colorIntensity})`;
+
+                    $(cell).parent().css('background-color', color);
+                });
+            }
+
+            function freq_table_fn_all() {
+                return freq_table_fn($('#frequencies-all'))
+            }
+
+            function freq_table_fn_by_group() {
+                return freq_table_fn($('#frequencies-by-group'))
+            }
+
+            function freq_table_fn_by_group_once() {
+                return freq_table_fn($('#frequencies-by-group-once'))
+            }
+
+
+            function freq_table_fn_by_category() {
+                return freq_table_fn($('#frequencies-by-cateogry'))
+            }
+
+            function freq_table_fn_by_category_once() {
+                return freq_table_fn($('#frequencies-by-cateogry-once'))
+            }
+
+            const freq_table_labels = ['index', 'platform', 'category', 'type', 'marker_title', 'marker_group', 'fts_query', 'count_all', 'count_all_rel', 'count_qanon', 'count_qanon_rel', 'count_sample', 'count_sample_rel', 'match_all', 'match_all_ratio', 'match_qanon', 'match_qanon_ratio', 'match_sample', 'match_sample_ratio']
+            initialize_table2($('#frequencies-all'), freq_data, freq_table_labels, freq_table_fn_all)
+
+            const freq_table_labels_by_group = ['platform', 'category', 'type', 'marker_group', 'count_all', 'count_qanon', 'count_sample', 'count_all_rel', 'count_qanon_rel', 'count_sample_rel', 'match_all', 'match_qanon', 'match_sample']
+            initialize_table2($('#frequencies-by-group'), group_array_by_platform_and_marker_group(freq_data), freq_table_labels_by_group, freq_table_fn_by_group)
+            // TODO: modify this! initialize_table2($('#frequencies-by-group-once'), group_array_by_platform_and_marker_group(freq_data), freq_table_labels_by_group, freq_table_fn_by_group_once)
+
+            const freq_table_labels_by_category = ['platform', 'category', 'type', 'count_all', 'count_qanon', 'count_sample', 'count_all_rel', 'count_qanon_rel', 'count_sample_rel', 'match_all', 'match_qanon', 'match_sample']
+            initialize_table2($('#frequencies-by-cateogry'), group_array_by_platform_and_category(freq_data), freq_table_labels_by_category, freq_table_fn_by_category)
+            // TODO: modify this! initialize_table2($('#frequencies-by-cateogry-once'), group_array_by_platform_and_category_once(freq_data), freq_table_labels_by_category, freq_table_fn_by_category_once)
+
+            $('#loading-progress .analysis-vis').removeClass('pending');
+        }).fail(function (jqXHR, textStatus, errorThrown) {
+            console.error('Error loading JSON data:', textStatus, errorThrown);
+        });
+    });
+</script>
+
+</body>
+
+</html>
