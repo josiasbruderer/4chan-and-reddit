@@ -129,7 +129,7 @@
     "markers_ods": "config/markers.ods",
     "results_dir": "results/",
     "dryrun": true,
-    "sample_mode": "ratio",
+    "sample_mode": "weighted",
     "sample_total_size": 1000000,
     "sample_ratio": {
         "4chan": 1,

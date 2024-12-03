@@ -66,8 +66,8 @@ def start(config, ACTION, reliability_test = False):
                 log.info(f'creating sample for {platform} using {sample_ratio[platform]}% of all data')
                 sample[platform] = qm.query_sample(conn, "create_sample_bypercent", {'platform': platform, 'sample_ratio': sample_ratio[platform]})
             elif sample_mode == 'weighted':
-                log.info(f'creating sample for {platform} using weights and total of {config.get('analysis', 'total_sample_size')} posts of all data')
-                sample[platform] = qm.query_sample(conn, "create_sample_weighted", {'platform': platform, 'total_sample_size': config.get('analysis', 'total_sample_size')})
+                log.info(f'creating sample for {platform} using weights and total of {config.get('analysis', 'sample_total_size')} posts of all data')
+                sample[platform] = qm.query_sample(conn, "create_sample_weighted", {'platform': platform, 'sample_total_size': config.get('analysis', 'sample_total_size')})
             else:
                 log.info("creating sample for " + platform + " using 1% of all data")
                 sample[platform] = qm.query_sample(conn, "create_sample_bypercent", {'platform': platform, 'sample_ratio': 100})

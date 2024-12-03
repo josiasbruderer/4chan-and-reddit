@@ -82,7 +82,7 @@ ORDER BY RANDOM() LIMIT (SELECT count() FROM v_all_posts_meta WHERE platform = :
                   SELECT
                     platform,
                     total_posts,
-                    ROUND((weighted_posts / total_weight) * :total_sample_size) AS sample_size
+                    ROUND((weighted_posts / total_weight) * :sample_total_size) AS sample_size
                   FROM normalized_weights
                 ),
                 sampled_posts AS (
