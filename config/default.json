@@ -8,8 +8,37 @@
     "init_script": "scripts/create_database.sql",
     "_drop_all_data_comment": "WARNING! setting drop_all_data to 'true' will delete existing database",
     "drop_all_data": false,
-    "run_mode": "hagen",
+    "run_mode": "sample-testing",
     "run_modes": {
+      "sample-testing": {
+        "db_name": "db/data_sample-testing.db",
+        "skip_import": [
+          "redarcs",
+          "fourplebs"
+        ],
+        "date_range": {
+          "start": "2017-10-27T20:00:00",
+          "end": "2018-11-02T03:59:59"
+        },
+        "file_exclusions": [
+          "anime_titties_submissions.gz",
+          "AskALiberal_submissions.gz",
+          "Conservative_submissions.gz",
+          "conspiracy_submissions.gz",
+          "uspolitics_submissions.gz",
+          "worldpolitics_submissions.gz",
+          "adv.csv.gz",
+          "hr.csv.gz",
+          "s4s.csv.gz",
+          "tg.csv.gz",
+          "tv.csv.gz",
+          "f.csv.gz",
+          "o.csv.gz",
+          "sp.csv.gz",
+          "trv.csv.gz",
+          "x.csv.gz"
+        ]
+      },
       "test": {
         "db_name": "db/data_test.db",
         "skip_import": [
@@ -99,7 +128,12 @@
     "favicon": "scripts/favicon.ico",
     "markers_ods": "config/markers.ods",
     "results_dir": "results/",
-    "dryrun": false,
-    "sample_mode": "1percent"
+    "dryrun": true,
+    "sample_mode": "ratio",
+    "sample_total_size": 1000000,
+    "sample_ratio": {
+        "4chan": 1,
+        "reddit": 5
+    }
   }
 }

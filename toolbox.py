@@ -9,7 +9,7 @@ from packages import importer
 from packages import analyser
 from packages import webserver
 
-VERSION = "1.0.8"
+VERSION = "1.0.9"
 ROOT_DIR = PACKAGE_DIR = os.path.dirname(os.path.realpath(__file__))
 if getattr(sys, 'frozen', False):
     ROOT_DIR = os.path.dirname(os.path.realpath(sys.executable))  # when run packaged we want path of executable instead of temporary directory
@@ -76,6 +76,10 @@ def main():
     if ACTION == "analyse":
         log.info(f'Analysing data from {config.get_from_import_run_mode('db_name')}')
         analyser.start(config, ACTION)
+
+    if ACTION == "reliability-test":
+        log.info(f'Analysing data from {config.get_from_import_run_mode('db_name')} in reliability test mode')
+        analyser.start(config, ACTION, True)
 
     if ACTION == "webserver":
         log.info(f'Starting web server from {config.as_path(config.get('analysis', 'results_dir'))}')

@@ -53,11 +53,48 @@ WHERE t.platform = :platform;''',
 SELECT uid from posts WHERE platform_uid = (SELECT uid FROM platforms WHERE name = :platform)
 ORDER BY RANDOM() LIMIT (SELECT count() FROM v_all_posts_meta WHERE platform = concat('q_', :platform));'''
     },
-    "create_sample_v2": {
+    "create_sample_bypercent": {
         "h": [],
         "q": '''CREATE TEMPORARY TABLE [sample_table_name] AS
 SELECT uid from posts WHERE platform_uid = (SELECT uid FROM platforms WHERE name = :platform)
-ORDER BY RANDOM() LIMIT (SELECT count() FROM v_all_posts_meta WHERE platform = :platform) / 100;'''
+ORDER BY RANDOM() LIMIT (SELECT count() FROM v_all_posts_meta WHERE platform = :platform) / 100 * :sample_ratio;'''
+    },
+    "create_sample_weighted": {
+        "h": [],
+        "q": '''CREATE TEMPORARY TABLE [sample_table_name] AS 
+                WITH platform_counts AS (
+                  SELECT
+                    name AS platform,
+                    COUNT(*) AS total_posts
+                  FROM platforms
+                  JOIN posts ON platforms.uid = posts.platform_uid
+                  GROUP BY platform
+                ),
+                normalized_weights AS (
+                  SELECT
+                    platform,
+                    total_posts,
+                    SQRT(total_posts) AS weighted_posts,
+                    SUM(SQRT(total_posts)) OVER () AS total_weight
+                  FROM platform_counts
+                ),
+                sample_sizes AS (
+                  SELECT
+                    platform,
+                    total_posts,
+                    ROUND((weighted_posts / total_weight) * :total_sample_size) AS sample_size
+                  FROM normalized_weights
+                ),
+                sampled_posts AS (
+                    SELECT posts.uid
+                    FROM posts
+                    JOIN platforms on posts.platform_uid = platforms.uid
+                    JOIN sample_sizes on platforms.name = sample_sizes.platform
+                    WHERE platform_uid = (SELECT uid FROM platforms WHERE name = :platform)
+                    ORDER BY RANDOM()
+                    LIMIT (select sample_size from sample_sizes where platform = :platform)
+                
+                ) select * from sampled_posts;''',
     },
     "delete_sample": {
       "h": [],
@@ -161,7 +198,7 @@ class querymanager:
             return False, 'unknown query'
 
         try:
-            if name == "create_sample" or name == "create_sample_v2":
+            if name.startswith("create_sample"):
                 cur.execute(q[1].replace('[sample_table_name]', sample_name), data)
                 return sample_name
             if name == "delete_sample":

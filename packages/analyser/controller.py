@@ -11,7 +11,7 @@ from .query import querymanager
 from pandas_ods_reader import read_ods
 
 
-def start(config, ACTION):
+def start(config, ACTION, reliability_test = False):
     log = logger.setup(__name__, config.get("general", "log_file"), logger.DEBUG)
     perf = performancer.Performancer(log.debug)
     results_dir = config.as_path(config.get('analysis', 'results_dir'))
@@ -30,6 +30,7 @@ def start(config, ACTION):
         '4chan_full': os.path.join(results_dir, "sample_4chan_full"),
         'reddit_full': os.path.join(results_dir, "sample_reddit_full")
     }
+    sample_ratio = config.get('analysis', 'sample_ratio')
     sample_size = {
         '4chan': 0,
         'reddit': 0
@@ -51,18 +52,25 @@ def start(config, ACTION):
         markers_ods_path = config.as_path(config.get('analysis', 'markers_ods'))
         markers_df = read_ods(markers_ods_path, "full")
         analyse_df = markers_df[markers_df["to_analyse"] == 1]
-        # analyse_df = analyse_df[60:63]  # limit df to 3 rows for testing :)
+        analyse_df = analyse_df[60:63]  # limit df to 3 rows for testing :)
         analyse_df = analyse_df.reset_index()
 
         # create sample
         sample = {}
+        sample_mode = config.get('analysis', 'sample_mode')
         for platform in ['4chan', 'reddit']:
-            if config.get('analysis', 'sample_mode') == 'hagen':
+            if sample_mode == 'hagen':
                 log.info("creating sample for " + platform + " using same amount of posts as Hagen et al. (2020)")
                 sample[platform] = qm.query_sample(conn, "create_sample", {'platform': platform})
+            elif sample_mode == 'ratio':
+                log.info(f'creating sample for {platform} using {sample_ratio[platform]}% of all data')
+                sample[platform] = qm.query_sample(conn, "create_sample_bypercent", {'platform': platform, 'sample_ratio': sample_ratio[platform]})
+            elif sample_mode == 'weighted':
+                log.info(f'creating sample for {platform} using weights and total of {config.get('analysis', 'total_sample_size')} posts of all data')
+                sample[platform] = qm.query_sample(conn, "create_sample_weighted", {'platform': platform, 'total_sample_size': config.get('analysis', 'total_sample_size')})
             else:
                 log.info("creating sample for " + platform + " using 1% of all data")
-                sample[platform] = qm.query_sample(conn, "create_sample_v2", {'platform': platform})
+                sample[platform] = qm.query_sample(conn, "create_sample_bypercent", {'platform': platform, 'sample_ratio': 100})
             sample_dump = qm.query_sample(conn, "dump_sample", sample_name=sample[platform])
             sample_dump = [s[0] for s in sample_dump[1]]
             sample_size[platform] = len(sample_dump)
@@ -77,6 +85,7 @@ def start(config, ACTION):
                     writer.writerow(sample_dump2[0])
                     for row in sample_dump2[1]:
                         writer.writerow(row)
+        log.info(f'Sample sizes using {sample_mode} mode: {sample_size}')
 
         # describe data
         log.info("analyzing descriptive")

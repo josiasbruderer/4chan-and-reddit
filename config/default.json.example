@@ -13,7 +13,7 @@
       "[run_mode_key]": {
         "db_name": "db/data_[identifier].db",
         "skip_import": [
-          "[any of combination: hagen, redarcs, fourplebs]",
+          "[any of combination: hagen, redarcs, fourplebs]"
         ],
         "date_range": {
           "start": "[Start Range formatted as YYYY-MM-DDTHH:MM:SS; or date_range = null]",
@@ -49,6 +49,11 @@
     "markers_ods": "config/markers.ods",
     "results_dir": "results/",
     "dryrun": false,
-    "sample_mode": "[1percent or hagen]"
+    "sample_mode": "[1percent, ratio, weighted or hagen]",
+    "sample_total_size": 1000000,
+    "sample_ratio": {
+        "4chan": 1,
+        "reddit": 5
+    }
   }
 }
